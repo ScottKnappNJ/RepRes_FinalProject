@@ -1,0 +1,153 @@
+---
+title: "Weather Events: Economic & Health Risks"
+author: "Scott K"
+date: "8/3/2020"
+output: html_document
+---
+
+### Synopsis
+
+In this report, we aim to assess the destruction caused by weather events
+between 1950 and 2011.  Our goal is to determine which event causes the most 
+damage, as measured by both health risks (injures and deaths) and financial
+risks (property and crop damage).  From these data, we have determined that,
+across of the documented events that Tornadoes are most harmful with respect to 
+both health and economic consequences.
+
+### Loading and Processing the Raw Data
+
+#### Reading in the data
+
+We loaded in the necessary libraries and read in the data from the included
+zip archive.  The data is in .csv format and the specific variables that we 
+need do not need any tidying
+
+```{r}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+
+data_file <- "repdata_data_StormData.csv.bz2"
+
+data <- read.csv(data_file)
+```
+
+After reading in the data, we check the first few rows of the dataset.
+
+```{r}
+dim(data)
+
+head(data)
+```
+
+#### Processing the data
+
+We first want to answer the question, which types of events are most harmful with 
+respect to population health?  To assess this, we must summarize the variables, 
+injuries and deaths, by weather event.
+
+```{r}
+data_deaths <- data %>%
+                group_by(event = EVTYPE) %>%
+                summarize(deaths = sum(FATALITIES)) %>%
+                arrange(desc(deaths)) %>%
+                top_n(10, wt = deaths)
+
+data_injuries <- data %>%
+        group_by(event = EVTYPE) %>%
+        summarize(injuries = sum(INJURIES)) %>%
+        arrange(desc(injuries)) %>%
+        top_n(10, wt = injuries)
+```
+
+Next, we want to answer the question, which type of events have the greatest
+economic consequences?  To assess this, we must summarize the variables, crop 
+damange and property damage.
+
+```{r}
+data_damage <- data %>%
+        group_by(event = EVTYPE) %>%
+        summarize(property_damage = sum(PROPDMG)/1000,
+                crop_damage = sum(CROPDMG)/1000,
+                total_damage = (property_damage + crop_damage)) %>%
+        arrange(desc(total_damage)) %>%
+        top_n(10, wt = total_damage)
+
+```
+
+### Results
+
+#### Events most harmful to population health
+
+In order to show the events with the greatest health risks, we will list the 
+top 10 in terms of both deaths and injuries.
+
+```{r}
+data_deaths
+
+data_injuries
+```
+
+We will also produce a barchart showing that Torndaoes, clearly, cause the 
+greatest risk to the population's health.
+
+```{r}
+death_plot <- ggplot(data_deaths, aes(event, deaths)) +
+        geom_bar(stat = "identity", aes(fill = event)) +
+        ylab("Total Deaths") +
+        xlab("Event Type") +
+        theme(axis.text.x = element_text(angle = 90, size = 6),
+                legend.position = "none",
+                axis.title.x = element_text(color = "blue", 
+                        size = 12),
+                axis.title.y = element_text(color = "blue", 
+                        size = 12))
+        
+injuries_plot <- ggplot(data_injuries, aes(event, injuries)) +
+        geom_bar(stat = "identity", aes(fill = event)) +
+        ylab("Total Injuries") +
+        xlab("Event Type") +
+        theme(axis.text.x = element_text(angle = 90, size =6),
+                legend.position = "none",
+        axis.title.x = element_text(color = "blue", 
+                size = 12),
+        axis.title.y = element_text(color = "blue", 
+                size = 12))
+
+ggarrange(death_plot, injuries_plot, ncol = 2, 
+        labels = c("Total Deaths per Event Type", 
+                "Total Injuries per Event Type"),
+        font.label = list(color = "blue"))
+```
+
+#### Events with gratest economic consequences
+
+We will do the same for economic risk.  Here is the top 10:
+
+```{r}
+data_damage
+```
+
+And here is the barchart showing, again, that Tornadoes cause the most risk with 
+regards to finances, as well.
+
+```{r}
+
+ggplot(data_damage, aes(event, total_damage)) +
+        geom_bar(stat = "identity", aes(fill = event)) +
+        ylab("Total Damage (,000s)") +
+        xlab("Event Type") +
+        ggtitle("Total Damage per Event Type") +
+        theme(axis.text.x = element_text(angle = 90, size =6),
+                legend.position = "none", 
+                plot.title = element_text(hjust = 0.5, color = "blue", 
+                        size = 16, face = "bold"),
+                axis.title.x = element_text(color = "blue", 
+                        size = 12, face ="bold"),
+                axis.title.y = element_text(color = "blue", 
+                        size = 12, face ="bold"))
+```
+
+
+
